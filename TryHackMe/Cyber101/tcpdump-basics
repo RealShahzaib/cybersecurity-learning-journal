@@ -1,181 +1,458 @@
-🐧 Tcpdump Basics — TryHackMe Writeup
-📖 Introduction: What is Tcpdump and Why Do We Use It?
-While studying networking and protocols, we usually learn everything in theory but rarely get to actually see how protocol conversations take place in real time.
-After using internet services for years, we still don’t visually understand what is happening behind the scenes when packets are being sent and received.
+# Nmap Writeup (Detailed – Deep Understanding Notes)
 
-That is why one of the best practices in cybersecurity and networking is to capture and analyze network traffic, as it helps us truly understand how networks function.
+## Initial Understanding – The Problem Before Nmap
 
-Tcpdump is a command-line packet analysis tool (developed in the late 1980s–early 1990s) that allows us to:
+So first I understood the real-world scenario:
 
-Capture live network packets
+If I am connected to a network and I want to discover:
 
-Apply filters to specific traffic
+- what devices are online  
+- what systems exist on the network  
+- or even scan another network  
 
-Save packets into files (PCAP)
-
-Analyze network behavior at a deeper level
-
-It is similar in purpose to Wireshark, but instead of a GUI, tcpdump works entirely through the command line, which makes it very useful in servers and real-world SOC environments.
-
-🛠️ Learning the Basics of Tcpdump Usage
-The first thing I learned was how tcpdump listens on network interfaces.
-
-For example, we can capture traffic from a specific interface using:
-tcpdump -i eth0
-
-Or we can listen on all available interfaces using:
-tcpdump -i any
-
-To check the available interfaces on the system, I used:
-ip a
-
-This helped me understand common interfaces like:
-
-eth0 → Wired Ethernet
-
-wlan0 → Wireless network interface
-
-💾 Capturing and Saving Packets (PCAP Files)
-One very important feature of tcpdump is the ability to save captured traffic into files for later analysis.
-
-Using:
-tcpdump -w packetlog.pcap
-
-I learned that packets can be stored in .pcap format, which is commonly used in network forensics and SOC investigations.
-
-Interestingly, I also explored the difference between PCAP and PCAPNG:
-
-PCAP → Traditional packet capture format
-
-PCAPNG → Modern format with better precision, metadata, and multi-interface support
-
-To read packets from a saved capture file:
-tcpdump -r traffic.pcap
-
-This is especially useful when analyzing suspicious traffic offline.
-
-🎯 Packet Control and Performance Options
-I discovered that if tcpdump is run without limits, it continues capturing packets indefinitely until manually stopped.
-To control this, we can limit the number of captured packets:
-tcpdump -c 50
-
-Another useful concept was DNS resolution. By default, tcpdump tries to resolve IP addresses into domain names, which can slow down analysis.
-
-To disable name resolution:
-tcpdump -n
-
-And to disable both hostname and port resolution:
-tcpdump -nn
-
-I also learned about verbosity levels:
-
--v → Verbose output
-
--vv → More detailed packet information
-
-🔍 Filtering Traffic in Tcpdump
-Filtering is one of the most powerful aspects of tcpdump.
-
-📡 Host-Based Filtering
-To capture traffic from or to a specific host:
-tcpdump host <IP>
-
-For source-specific traffic:
-tcpdump src host <IP>
-
-For destination-specific traffic:
-tcpdump dst host <IP>
-
-Also, I learned that packet capturing usually requires root privileges, so using sudo is necessary in most cases.
-
-🔌 Port-Based Filtering
-Tcpdump allows filtering by ports, which is useful for analyzing specific services.
-
-For example, capturing DNS traffic:
-tcpdump port 53
-
-Since DNS commonly uses port 53 (UDP/TCP), this helps isolate relevant traffic quickly.
-
-🌐 Protocol-Based Filtering
-Another useful filtering method is by protocol:
-tcpdump icmp
-tcpdump udp
-tcpdump ip
-
-During the practical task, I analyzed a traffic.pcap file and used filters to:
-
-Count ICMP packets
-
-Identify ARP-related queries
-
-Detect DNS subdomain requests
-
-This gave me hands-on experience in real packet investigation scenarios.
-
-🧠 Advanced Filtering and Header Analysis
-One of the deeper concepts I learned was filtering packets using header byte inspection through pcap-filter syntax:
-proto[expr:size]
-
-Where:
-
-proto = protocol (tcp, arp, ether, etc.)
-
-expr = byte offset
-
-size = number of bytes to inspect
+I could technically do it manually.
 
 For example:
-ether[0] & 1 != 0
 
-This inspects the first byte of the Ethernet header and performs a logical check.
-At this point, I realized that tcpdump goes much deeper than basic packet viewing and allows very fine-grained packet analysis.
+- Using ping to check each IP  
+- Using arp-scan on a local network  
+- Trying ports manually with tools like telnet  
 
-🚩 TCP Flags Filtering (Advanced Concept)
-I also learned about filtering packets based on TCP flags such as:
+But every manual method has limitations:
 
-SYN
+- Ping only tells if host is alive (no system info)  
+- ARP scan only works on the same local network  
+- Manual port checking (like telnet on 1000 ports) is extremely inefficient  
 
-ACK
+Even scripting it would still be slow and messy.
 
-FIN
+This made me realize why a flexible and automated tool is needed.
 
-RST
+That is where Nmap (Network Mapper) comes in, which was originally published in 1997 and is still heavily used today in cybersecurity and penetration testing.
 
-Example: Capturing only SYN packets:
-tcpdump "tcp[tcpflags] == tcp-syn"
+---
 
-Or capturing packets where the SYN flag is set:
-tcpdump "tcp[tcpflags] & tcp-syn != 0"
+## Core Purpose of Nmap – Host Discovery
 
-Through tasks, I analyzed packets to:
+The first main thing I learned:  
+Nmap is not just a port scanner.  
+Its FIRST important job is host discovery (finding who is online).
 
-Identify reset flag packets
+And the course kept mentioning “sophisticated ways” of discovering live hosts which made me curious because it’s not just simple ping.
 
-Detect hosts sending unusually large packet volumes
+---
 
-This directly relates to detecting suspicious network behavior in cybersecurity monitoring.
+## Ways to Specify Targets in Nmap
 
-🖥️ Output Customization and Packet Display
-Tcpdump also provides several options to customize how packet data is displayed:
+I learned that Nmap allows multiple ways to define targets:
 
--q → Quick output
+### 1. IP Range
 
--A → Display packet data in ASCII
+Example:
 
--e → Show link-layer headers (including MAC addresses)
+192.168.0.1-20
 
-The -e option was particularly interesting because it reveals MAC addresses.
-Since IP addresses can be spoofed, checking MAC addresses can help identify the actual physical device causing unusual traffic within a network.
+This scans all IPs from .1 to .20.
 
-🎓 Key Takeaways
-Tcpdump is a powerful CLI-based packet analysis tool widely used in cybersecurity and SOC environments.
+Useful when you know a small chunk of the network.
 
-It helps visualize real network traffic instead of just learning protocols theoretically.
+### 2. Subnet Scanning
 
-Filtering by host, port, protocol, and TCP flags allows precise traffic investigation.
+Example:
 
-PCAP file analysis is an essential skill for real-world security analysis.
+192.168.0.1/24
 
-Understanding tcpdump significantly improves practical knowledge of how networks behave behind the scenes.
+Here subnet means a large network divided into smaller segments.  
+This scans the whole subnet automatically.
 
-Overall, this room strengthened my understanding of packet capture, traffic filtering, and real-world network analysis, which are essential skills for a future SOC analyst.
+### 3. Hostname
+
+Example:
+
+nmap tryhackme.com
+
+Instead of IP, Nmap resolves the domain and scans it.
+
+---
+
+## Root Privileges Importance (Very Important Detail)
+
+Just like tcpdump, Nmap shows its full power only with root privileges.
+
+If run without root:
+
+- Some scan types get limited  
+- Especially SYN scans and certain ICMP scans  
+- It may fall back to TCP Connect scan automatically  
+
+So privilege level directly affects scan capability.
+
+---
+
+## Scanning a Local Network (Host Discovery with -sn)
+
+If I want to scan my own network (the one I am connected to), I can use:
+
+nmap -sn <subnet>
+
+What actually happens behind the scenes (very important concept):
+
+Nmap sends ARP requests like:  
+“Who has this IP?”
+
+Any device that replies reveals:
+
+- It is alive  
+- Its MAC address  
+
+So on local networks, ARP is faster and more reliable than ICMP.
+
+This is why host discovery on local network is very efficient.
+
+---
+
+## Scanning Remote Networks (Key Difference)
+
+Now the BIG conceptual shift:
+
+If the target network is remote (separated by routers),  
+Nmap CANNOT use ARP requests.
+
+Why?  
+Because ARP only works within the same local network (Layer 2).
+
+So instead, Nmap uses:
+
+- ICMP Echo Requests (ping)  
+- ICMP Timestamp Requests  
+- TCP SYN packets (usually to port 443)  
+- TCP ACK packets (usually to port 80)  
+
+This part was actually very interesting because I confirmed it in Wireshark.
+
+Observed behavior:
+
+- ICMP echo requests sent  
+- ICMP timestamps sent  
+- TCP SYN packets to 443  
+- TCP ACK packets to 80  
+- Multiple retries (persistence behavior)  
+
+Even when some IPs don’t respond, Nmap keeps trying different probe methods to confirm if the host is alive.
+
+This is what they meant by “sophisticated host discovery”.
+
+---
+
+## Controlling Host Discovery Methods
+
+Nmap allows manual control over discovery probes like:
+
+-PS → TCP SYN ping  
+-PA → TCP ACK ping  
+
+This means I can customize how Nmap checks if a host is alive depending on firewall behavior.
+
+---
+
+## List Scan (-sL) – Recon Without Scanning
+
+Command:
+
+nmap -sL <target>
+
+This does NOT scan the targets.  
+It only lists:
+
+- Which IPs will be scanned  
+- DNS resolution info  
+
+This is actually very useful for planning (like knowing how many targets exist before scanning).
+
+---
+
+## From Host Discovery to Service Discovery
+
+Important realization:
+
+-sn = quiet scan (only finds active hosts)
+
+Does NOT tell what services are running
+
+But in real cybersecurity/SOC work, we care about:
+
+- What services are running  
+- Which ports are open  
+- What software is exposed  
+
+Services = processes listening on TCP/UDP ports  
+Examples:
+
+- HTTP → Port 80  
+- HTTPS → Port 443  
+- DNS → Port 53  
+
+---
+
+## Understanding Ports (Critical Foundation)
+
+TCP ≈ ~65,535 ports  
+UDP ≈ ~65,535 ports
+
+Manually checking them with telnet is inefficient.  
+This leads to automated port scanning.
+
+---
+
+## TCP Connect Scan (-sT)
+
+Command:
+
+nmap -sT
+
+This scan:
+
+Completes full TCP 3-way handshake
+
+SYN → SYN/ACK → ACK
+
+Then Nmap closes connection using RST-ACK
+
+It is:
+
+- Reliable  
+- But noisy  
+- Easily logged by IDS/IPS systems  
+
+Also used automatically when Nmap is run without root.
+
+---
+
+## SYN Scan (Stealth Scan) -sS
+
+Command:
+
+nmap -sS
+
+This is called a half-open scan.
+
+How it works:
+
+- Sends SYN packet  
+- If SYN/ACK received → port is open  
+- Instead of completing handshake, Nmap resets connection  
+
+Advantages:
+
+- Faster  
+- More stealthy  
+- Less likely to be logged as full connection  
+
+This is one of the most important scans in real-world recon.
+
+---
+
+## UDP Scanning (-sU)
+
+Command:
+
+nmap -sU
+
+Even though TCP is more common, UDP services are critical:
+
+- DNS  
+- DHCP  
+- NTP  
+- SNMP  
+- Broadcast services  
+
+UDP scanning is slower because:
+
+- No handshake mechanism  
+- Often relies on lack of response or ICMP unreachable messages  
+
+---
+
+## Port Selection Controls (Small but Important)
+
+Default:
+
+Nmap scans top 1000 ports
+
+Options:
+
+-F → Fast scan (top 100 ports)  
+-p1-1024 → Scan well-known ports  
+-p<range> → Custom range (e.g., -p20-1000)  
+
+This is useful for:
+
+- Speed optimization  
+- Targeted reconnaissance  
+
+---
+
+## Version Detection (-sV)
+
+Command:
+
+nmap -sV
+
+This tells:
+
+- Service name  
+- Version running on open ports  
+
+Extremely useful for:
+
+- Vulnerability assessment  
+- Exploit research  
+- Information gathering phase  
+
+---
+
+## OS Detection (-O)
+
+Command:
+
+nmap -O
+
+Important detail:
+
+It does NOT guarantee exact OS
+
+It uses fingerprinting techniques
+
+Gives close estimation (like kernel ranges)
+
+Example:  
+Predicted: 4.1 – 5.8  
+Actual: 5.3  
+(Shows how fingerprinting is approximate)
+
+---
+
+## Aggressive Scan (-A) – “Father of Nmap”
+
+Command:
+
+nmap -A
+
+This enables multiple features together:
+
+- OS Detection (-O)  
+- Version Detection (-sV)  
+- Traceroute  
+- Script scanning (NSE)  
+- Additional probing  
+
+Very powerful but:
+
+- Very noisy  
+- Easily detectable by IDS  
+
+---
+
+## Forcing Scan on Non-Responsive Hosts (-Pn)
+
+Normally:  
+If host does not respond → Nmap marks it as down.
+
+Using:
+
+nmap -Pn
+
+Forces Nmap to:
+
+- Treat all hosts as online  
+- Perform port scan anyway  
+
+Useful when:
+
+- ICMP is blocked by firewall  
+- Hosts silently drop probes  
+
+---
+
+## Timing Templates (Stealth vs Speed Tradeoff)
+
+Nmap provides 6 timing templates:
+
+- T0 → Paranoid (slowest)  
+- T1 → Sneaky  
+- T2 → Polite  
+- T3 → Normal (default)  
+- T4 → Aggressive  
+- T5 → Insane (fastest)  
+
+Important security concept:  
+Faster scans = Higher chance of IDS detection  
+Slower scans = More stealth but time-consuming
+
+Example insight:  
+T0 can take hours  
+T4 can finish in seconds depending on scope
+
+---
+
+## Performance & Advanced Controls (Conceptual Understanding)
+
+I also encountered:
+
+- Parallel service probes  
+- Min/max probe limits  
+- Host timeout settings  
+
+My understanding:  
+If network is slow or dropping packets,  
+Nmap dynamically adjusts probe timing and parallelism  
+to balance accuracy and speed.
+
+Even though this part was complex,  
+main idea = performance tuning based on network conditions.
+
+---
+
+## Verbosity & Debugging
+
+Options:
+
+-v → Verbose output (more details)  
+-d → Debug output (can go up to -d9)  
+
+Useful for:
+
+- Understanding scan behavior  
+- Troubleshooting scan issues  
+- Deep learning (like Wireshark correlation)  
+
+---
+
+## Saving Scan Results (Practical Skill)
+
+Different output formats:
+
+-oN → Normal output file  
+-oX → XML format  
+-oG → Grepable output (useful for automation & awk)  
+
+This is very important for:
+
+- Reporting  
+- Documentation  
+- SOC analysis logs  
+- Future reference  
+
+---
+
+## Personal Learning Reflection (Key Mental Note)
+
+What made Nmap memorable for me:
+
+- Seeing packet behavior in Wireshark  
+- Understanding WHY different probes are used  
+- Realizing it’s not just a “scanner” but an intelligent reconnaissance tool  
+- The persistence of Nmap probes (ICMP + TCP + retries)  
+
+And honestly,  
+the curiosity factor (“how did Nmap detect this host??”) made the learning deeper instead of just memorizing commands.
