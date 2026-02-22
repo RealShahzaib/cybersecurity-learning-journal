@@ -17,102 +17,56 @@ Analyze network behavior at a deeper level
 It is similar in purpose to Wireshark, but instead of a GUI, tcpdump works entirely through the command line, which makes it very useful in servers and real-world SOC environments.
 
 🛠️ Learning the Basics of Tcpdump Usage
-The first thing I learned was how tcpdump listens on network interfaces. For example, we can capture traffic from a specific interface or all interfaces:
+The first thing I learned was how tcpdump listens on network interfaces. For example, we can capture traffic from a specific interface using tcpdump -i eth0 or listen on all available interfaces using tcpdump -i any.
 
-Bash
-# Capture from a specific interface
-tcpdump -i eth0
-
-# Listen on all available interfaces
-tcpdump -i any
-To check the available interfaces on the system, I used ip a. This helped me understand common interfaces like:
+To check the available interfaces on the system, I used the command ip a. This helped me understand common interfaces like:
 
 eth0 → Wired Ethernet
 
 wlan0 → Wireless network interface
 
 💾 Capturing and Saving Packets (PCAP Files)
-One very important feature of tcpdump is the ability to save captured traffic into files for later analysis.
+One very important feature of tcpdump is the ability to save captured traffic into files for later analysis using tcpdump -w packetlog.pcap.
 
-Bash
-tcpdump -w packetlog.pcap
-I learned that packets can be stored in .pcap format, which is commonly used in network forensics. I also explored the difference between formats:
+I learned that packets can be stored in .pcap format, which is commonly used in network forensics and SOC investigations. Interestingly, I also explored the difference between PCAP (the traditional format) and PCAPNG (the modern format with better precision and metadata). To read packets from a saved capture file later, I used tcpdump -r traffic.pcap.
 
-PCAP: Traditional packet capture format.
-
-PCAPNG: Modern format with better precision, metadata, and multi-interface support.
-
-To read packets from a saved capture file:
-
-Bash
-tcpdump -r traffic.pcap
 🎯 Packet Control and Performance Options
-To prevent tcpdump from capturing indefinitely, we can limit the count:
+I discovered that if tcpdump is run without limits, it continues capturing packets indefinitely. To control this, we can limit the count using tcpdump -c 50.
 
-Bash
-# Limit to 50 packets
-tcpdump -c 50
-Optimization & Verbosity
-By default, tcpdump tries to resolve IP addresses into domain names (DNS), which can slow down analysis. We can disable this:
+Another useful concept was DNS resolution. By default, tcpdump tries to resolve IP addresses into domain names, which can slow down analysis. To disable name resolution, I used tcpdump -n, and to disable both hostname and port resolution, I used tcpdump -nn.
 
--n : Disable name resolution.
-
--nn : Disable both hostname and port resolution.
-
--v or -vv : Increase the level of detail (Verbosity).
+I also learned about verbosity levels: -v provides verbose output, while -vv provides even more detailed packet information.
 
 🔍 Filtering Traffic in Tcpdump
 Filtering is one of the most powerful aspects of tcpdump.
 
 📡 Host-Based Filtering
-To isolate traffic related to a specific IP:
+To capture traffic from or to a specific host, use tcpdump host <IP>. For source-specific traffic, use tcpdump src host <IP>, and for destination-specific traffic, use tcpdump dst host <IP>.
 
-Bash
-tcpdump host <IP>
-tcpdump src host <IP> # Only source
-tcpdump dst host <IP> # Only destination
 🔌 Port-Based Filtering
-Useful for analyzing specific services, like DNS:
+Tcpdump allows filtering by ports. For example, to capture DNS traffic, I used tcpdump port 53. Since DNS commonly uses port 53, this helps isolate relevant traffic quickly.
 
-Bash
-tcpdump port 53
-🌐 Protocol-Based Filtering
-Bash
-tcpdump icmp
-tcpdump udp
-tcpdump ip
 🧠 Advanced Filtering and Header Analysis
-I learned to filter packets using header byte inspection through pcap-filter syntax: proto[expr:size]
+One of the deeper concepts I learned was filtering packets using header byte inspection through the syntax: proto[expr:size].
 
-proto: protocol (tcp, arp, ether, etc.)
+proto = protocol (tcp, arp, ether, etc.)
 
-expr: byte offset
+expr = byte offset
 
-size: number of bytes to inspect
+size = number of bytes to inspect
 
-Example: ether[0] & 1 != 0 (inspects the first byte of the Ethernet header).
+For example, ether[0] & 1 != 0 inspects the first byte of the Ethernet header and performs a logical check. This shows that tcpdump allows very fine-grained packet analysis.
 
 🚩 TCP Flags Filtering
-I learned how to detect specific TCP behaviors by filtering for flags like SYN, ACK, FIN, and RST.
+I also learned about filtering packets based on TCP flags such as SYN, ACK, FIN, and RST. To capture only SYN packets, I used tcpdump "tcp[tcpflags] == tcp-syn".
 
-Bash
-# Capturing only SYN packets
-tcpdump "tcp[tcpflags] == tcp-syn"
-
-# Capturing packets where the SYN flag is set
-tcpdump "tcp[tcpflags] & tcp-syn != 0"
-🖥️ Output Customization
--q : Quick/Quiet output.
-
--A : Display packet data in ASCII (readable text).
-
--e : Show link-layer headers (reveals MAC addresses).
+Through these tasks, I analyzed packets to identify reset flag packets and detect hosts sending unusually large packet volumes, which is key for detecting suspicious behavior.
 
 🎓 Key Takeaways
-Tcpdump is a essential CLI tool for SOC analysts.
+Tcpdump is a powerful tool widely used in SOC environments.
 
-Filtering by host, port, and flags allows for precise investigations.
+It helps visualize real network traffic instead of just learning theory.
 
-Understanding MAC addresses (via -e) helps identify physical devices even if IPs are spoofed.
+Filtering by host, port, and flags allows for precise investigation.
 
-PCAP analysis is the foundation of network forensics.
+Understanding tcpdump significantly improves practical knowledge of how networks behave behind the scenes.
