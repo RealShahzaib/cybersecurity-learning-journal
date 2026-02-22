@@ -1,1 +1,458 @@
+# Nmap Writeup (Detailed – Deep Understanding Notes)
 
+## Initial Understanding – The Problem Before Nmap
+
+So first I understood the real-world scenario:
+
+If I am connected to a network and I want to discover:
+
+- what devices are online  
+- what systems exist on the network  
+- or even scan another network  
+
+I could technically do it manually.
+
+For example:
+
+- Using ping to check each IP  
+- Using arp-scan on a local network  
+- Trying ports manually with tools like telnet  
+
+But every manual method has limitations:
+
+- Ping only tells if host is alive (no system info)  
+- ARP scan only works on the same local network  
+- Manual port checking (like telnet on 1000 ports) is extremely inefficient  
+
+Even scripting it would still be slow and messy.
+
+This made me realize why a flexible and automated tool is needed.
+
+That is where Nmap (Network Mapper) comes in, which was originally published in 1997 and is still heavily used today in cybersecurity and penetration testing.
+
+---
+
+## Core Purpose of Nmap – Host Discovery
+
+The first main thing I learned:  
+Nmap is not just a port scanner.  
+Its FIRST important job is host discovery (finding who is online).
+
+And the course kept mentioning “sophisticated ways” of discovering live hosts which made me curious because it’s not just simple ping.
+
+---
+
+## Ways to Specify Targets in Nmap
+
+I learned that Nmap allows multiple ways to define targets:
+
+### 1. IP Range
+
+Example:
+
+192.168.0.1-20
+
+This scans all IPs from .1 to .20.
+
+Useful when you know a small chunk of the network.
+
+### 2. Subnet Scanning
+
+Example:
+
+192.168.0.1/24
+
+Here subnet means a large network divided into smaller segments.  
+This scans the whole subnet automatically.
+
+### 3. Hostname
+
+Example:
+
+nmap tryhackme.com
+
+Instead of IP, Nmap resolves the domain and scans it.
+
+---
+
+## Root Privileges Importance (Very Important Detail)
+
+Just like tcpdump, Nmap shows its full power only with root privileges.
+
+If run without root:
+
+- Some scan types get limited  
+- Especially SYN scans and certain ICMP scans  
+- It may fall back to TCP Connect scan automatically  
+
+So privilege level directly affects scan capability.
+
+---
+
+## Scanning a Local Network (Host Discovery with -sn)
+
+If I want to scan my own network (the one I am connected to), I can use:
+
+nmap -sn <subnet>
+
+What actually happens behind the scenes (very important concept):
+
+Nmap sends ARP requests like:  
+“Who has this IP?”
+
+Any device that replies reveals:
+
+- It is alive  
+- Its MAC address  
+
+So on local networks, ARP is faster and more reliable than ICMP.
+
+This is why host discovery on local network is very efficient.
+
+---
+
+## Scanning Remote Networks (Key Difference)
+
+Now the BIG conceptual shift:
+
+If the target network is remote (separated by routers),  
+Nmap CANNOT use ARP requests.
+
+Why?  
+Because ARP only works within the same local network (Layer 2).
+
+So instead, Nmap uses:
+
+- ICMP Echo Requests (ping)  
+- ICMP Timestamp Requests  
+- TCP SYN packets (usually to port 443)  
+- TCP ACK packets (usually to port 80)  
+
+This part was actually very interesting because I confirmed it in Wireshark.
+
+Observed behavior:
+
+- ICMP echo requests sent  
+- ICMP timestamps sent  
+- TCP SYN packets to 443  
+- TCP ACK packets to 80  
+- Multiple retries (persistence behavior)  
+
+Even when some IPs don’t respond, Nmap keeps trying different probe methods to confirm if the host is alive.
+
+This is what they meant by “sophisticated host discovery”.
+
+---
+
+## Controlling Host Discovery Methods
+
+Nmap allows manual control over discovery probes like:
+
+-PS → TCP SYN ping  
+-PA → TCP ACK ping  
+
+This means I can customize how Nmap checks if a host is alive depending on firewall behavior.
+
+---
+
+## List Scan (-sL) – Recon Without Scanning
+
+Command:
+
+nmap -sL <target>
+
+This does NOT scan the targets.  
+It only lists:
+
+- Which IPs will be scanned  
+- DNS resolution info  
+
+This is actually very useful for planning (like knowing how many targets exist before scanning).
+
+---
+
+## From Host Discovery to Service Discovery
+
+Important realization:
+
+-sn = quiet scan (only finds active hosts)
+
+Does NOT tell what services are running
+
+But in real cybersecurity/SOC work, we care about:
+
+- What services are running  
+- Which ports are open  
+- What software is exposed  
+
+Services = processes listening on TCP/UDP ports  
+Examples:
+
+- HTTP → Port 80  
+- HTTPS → Port 443  
+- DNS → Port 53  
+
+---
+
+## Understanding Ports (Critical Foundation)
+
+TCP ≈ ~65,535 ports  
+UDP ≈ ~65,535 ports
+
+Manually checking them with telnet is inefficient.  
+This leads to automated port scanning.
+
+---
+
+## TCP Connect Scan (-sT)
+
+Command:
+
+nmap -sT
+
+This scan:
+
+Completes full TCP 3-way handshake
+
+SYN → SYN/ACK → ACK
+
+Then Nmap closes connection using RST-ACK
+
+It is:
+
+- Reliable  
+- But noisy  
+- Easily logged by IDS/IPS systems  
+
+Also used automatically when Nmap is run without root.
+
+---
+
+## SYN Scan (Stealth Scan) -sS
+
+Command:
+
+nmap -sS
+
+This is called a half-open scan.
+
+How it works:
+
+- Sends SYN packet  
+- If SYN/ACK received → port is open  
+- Instead of completing handshake, Nmap resets connection  
+
+Advantages:
+
+- Faster  
+- More stealthy  
+- Less likely to be logged as full connection  
+
+This is one of the most important scans in real-world recon.
+
+---
+
+## UDP Scanning (-sU)
+
+Command:
+
+nmap -sU
+
+Even though TCP is more common, UDP services are critical:
+
+- DNS  
+- DHCP  
+- NTP  
+- SNMP  
+- Broadcast services  
+
+UDP scanning is slower because:
+
+- No handshake mechanism  
+- Often relies on lack of response or ICMP unreachable messages  
+
+---
+
+## Port Selection Controls (Small but Important)
+
+Default:
+
+Nmap scans top 1000 ports
+
+Options:
+
+-F → Fast scan (top 100 ports)  
+-p1-1024 → Scan well-known ports  
+-p<range> → Custom range (e.g., -p20-1000)  
+
+This is useful for:
+
+- Speed optimization  
+- Targeted reconnaissance  
+
+---
+
+## Version Detection (-sV)
+
+Command:
+
+nmap -sV
+
+This tells:
+
+- Service name  
+- Version running on open ports  
+
+Extremely useful for:
+
+- Vulnerability assessment  
+- Exploit research  
+- Information gathering phase  
+
+---
+
+## OS Detection (-O)
+
+Command:
+
+nmap -O
+
+Important detail:
+
+It does NOT guarantee exact OS
+
+It uses fingerprinting techniques
+
+Gives close estimation (like kernel ranges)
+
+Example:  
+Predicted: 4.1 – 5.8  
+Actual: 5.3  
+(Shows how fingerprinting is approximate)
+
+---
+
+## Aggressive Scan (-A) – “Father of Nmap”
+
+Command:
+
+nmap -A
+
+This enables multiple features together:
+
+- OS Detection (-O)  
+- Version Detection (-sV)  
+- Traceroute  
+- Script scanning (NSE)  
+- Additional probing  
+
+Very powerful but:
+
+- Very noisy  
+- Easily detectable by IDS  
+
+---
+
+## Forcing Scan on Non-Responsive Hosts (-Pn)
+
+Normally:  
+If host does not respond → Nmap marks it as down.
+
+Using:
+
+nmap -Pn
+
+Forces Nmap to:
+
+- Treat all hosts as online  
+- Perform port scan anyway  
+
+Useful when:
+
+- ICMP is blocked by firewall  
+- Hosts silently drop probes  
+
+---
+
+## Timing Templates (Stealth vs Speed Tradeoff)
+
+Nmap provides 6 timing templates:
+
+- T0 → Paranoid (slowest)  
+- T1 → Sneaky  
+- T2 → Polite  
+- T3 → Normal (default)  
+- T4 → Aggressive  
+- T5 → Insane (fastest)  
+
+Important security concept:  
+Faster scans = Higher chance of IDS detection  
+Slower scans = More stealth but time-consuming
+
+Example insight:  
+T0 can take hours  
+T4 can finish in seconds depending on scope
+
+---
+
+## Performance & Advanced Controls (Conceptual Understanding)
+
+I also encountered:
+
+- Parallel service probes  
+- Min/max probe limits  
+- Host timeout settings  
+
+My understanding:  
+If network is slow or dropping packets,  
+Nmap dynamically adjusts probe timing and parallelism  
+to balance accuracy and speed.
+
+Even though this part was complex,  
+main idea = performance tuning based on network conditions.
+
+---
+
+## Verbosity & Debugging
+
+Options:
+
+-v → Verbose output (more details)  
+-d → Debug output (can go up to -d9)  
+
+Useful for:
+
+- Understanding scan behavior  
+- Troubleshooting scan issues  
+- Deep learning (like Wireshark correlation)  
+
+---
+
+## Saving Scan Results (Practical Skill)
+
+Different output formats:
+
+-oN → Normal output file  
+-oX → XML format  
+-oG → Grepable output (useful for automation & awk)  
+
+This is very important for:
+
+- Reporting  
+- Documentation  
+- SOC analysis logs  
+- Future reference  
+
+---
+
+## Personal Learning Reflection (Key Mental Note)
+
+What made Nmap memorable for me:
+
+- Seeing packet behavior in Wireshark  
+- Understanding WHY different probes are used  
+- Realizing it’s not just a “scanner” but an intelligent reconnaissance tool  
+- The persistence of Nmap probes (ICMP + TCP + retries)  
+
+And honestly,  
+the curiosity factor (“how did Nmap detect this host??”) made the learning deeper instead of just memorizing commands.
