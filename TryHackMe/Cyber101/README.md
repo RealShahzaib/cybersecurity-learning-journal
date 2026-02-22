@@ -7,6 +7,8 @@ This folder contains my writeups and learning notes from the Cyber 101 learning 
 - Networking Essentials
 - Core Protocols
 - Wireshark Basics
+- Tcpdump Basisc
+- Nmap Basics
   
 
 ## 🎯 Goal
