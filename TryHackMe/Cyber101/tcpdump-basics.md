@@ -1,0 +1,217 @@
+# 🐧 Tcpdump Basics — TryHackMe Writeup
+
+## 📖 Introduction: What is Tcpdump and Why Do We Use It?
+
+While studying networking and protocols, we usually learn everything in theory but rarely get to actually see how protocol conversations take place in real time.
+
+After using internet services for years, we still don’t visually understand what is happening behind the scenes when packets are being sent and received.
+
+That is why one of the best practices in cybersecurity and networking is to capture and analyze network traffic, as it helps us truly understand how networks function.
+
+Tcpdump is a command-line packet analysis tool (developed in the late 1980s–early 1990s) that allows us to:
+
+Capture live network packets
+
+Apply filters to specific traffic
+
+Save packets into files (PCAP)
+
+Analyze network behavior at a deeper level
+
+It is similar in purpose to Wireshark, but instead of a GUI, tcpdump works entirely through the command line, which makes it very useful in servers and real-world SOC environments.
+
+### 🛠️ Learning the Basics of Tcpdump Usage
+
+The first thing I learned was how tcpdump listens on network interfaces.
+
+For example, we can capture traffic from a specific interface using:
+
+**tcpdump -i eth0**
+
+Or we can listen on all available interfaces using:
+
+**tcpdump -i any**
+
+To check the available interfaces on the system, I used:
+
+**ip a**
+
+This helped me understand common interfaces like:
+
+**eth0 → Wired Ethernet**
+
+**wlan0 → Wireless network interface**
+
+### 💾 Capturing and Saving Packets (PCAP Files)
+
+One very important feature of tcpdump is the ability to save captured traffic into files for later analysis.
+
+Using:
+
+**tcpdump -w packetlog.pcap**
+
+I learned that packets can be stored in .pcap format, which is commonly used in network forensics and SOC investigations.
+
+Interestingly, I also explored the difference between PCAP and PCAPNG:
+
+**PCAP → Traditional packet capture format**
+
+**PCAPNG → Modern format with better precision, metadata, and multi-interface support**
+
+To read packets from a saved capture file:
+
+**tcpdump -r traffic.pcap**
+
+This is especially useful when analyzing suspicious traffic offline.
+
+### 🎯 Packet Control and Performance Options
+
+I discovered that if tcpdump is run without limits, it continues capturing packets indefinitely until manually stopped.
+
+To control this, we can limit the number of captured packets:
+
+**tcpdump -c 50**
+
+Another useful concept was DNS resolution. By default, tcpdump tries to resolve IP addresses into domain names, which can slow down analysis.
+
+To disable name resolution:
+
+**tcpdump -n**
+
+And to disable both hostname and port resolution:
+
+**tcpdump -nn**
+
+I also learned about verbosity levels:
+
+**-v → Verbose output**
+
+**-vv → More detailed packet information**
+
+### 🔍 Filtering Traffic in Tcpdump
+
+Filtering is one of the most powerful aspects of tcpdump.
+
+**<u>📡 Host-Based Filtering</u>**
+
+To capture traffic from or to a specific host:
+
+**tcpdump host <IP>**
+
+For source-specific traffic:
+
+**tcpdump src host <IP>**
+
+For destination-specific traffic:
+
+**tcpdump dst host <IP>**
+
+Also, I learned that packet capturing usually requires root privileges, so using sudo is necessary in most cases.
+
+**<u>🔌 Port-Based Filtering</u>**
+
+Tcpdump allows filtering by ports, which is useful for analyzing specific services.
+
+For example, capturing DNS traffic:
+
+**tcpdump port 53**
+
+Since DNS commonly uses port 53 (UDP/TCP), this helps isolate relevant traffic quickly.
+
+<u>🌐 Protocol-Based Filtering</u>
+
+Another useful filtering method is by protocol:
+
+**tcpdump icmp**
+
+**tcpdump udp**
+
+**tcpdump ip**
+
+During the practical task, I analyzed a traffic.pcap file and used filters to:
+
+**Count ICMP packets**
+
+**Identify ARP-related queries**
+
+**Detect DNS subdomain requests**
+
+This gave me hands-on experience in real packet investigation scenarios.
+
+### 🧠 Advanced Filtering and Header Analysis
+
+One of the deeper concepts I learned was filtering packets using header byte inspection through pcap-filter syntax:
+
+**proto[expr:size]**
+
+Where:
+
+**proto = protocol (tcp, arp, ether, etc.)**
+
+**expr = byte offset**
+
+**size = number of bytes to inspect**
+
+For example:
+
+**ether[0] & 1 != 0**
+
+This inspects the first byte of the Ethernet header and performs a logical check.
+
+At this point, I realized that tcpdump goes much deeper than basic packet viewing and allows very fine-grained packet analysis.
+
+### 🚩 TCP Flags Filtering (Advanced Concept)
+
+I also learned about filtering packets based on TCP flags such as:
+
+**SYN**
+
+**ACK**
+
+**FIN**
+
+**RST**
+
+Example: Capturing only SYN packets:
+
+**tcpdump "tcp[tcpflags] == tcp-syn"**
+
+Or capturing packets where the SYN flag is set:
+
+**tcpdump "tcp[tcpflags] & tcp-syn != 0"**
+
+Through tasks, I analyzed packets to:
+
+**Identify reset flag packets**
+
+**Detect hosts sending unusually large packet volumes**
+
+This directly relates to detecting suspicious network behavior in cybersecurity monitoring.
+
+### 🖥️ Output Customization and Packet Display
+
+Tcpdump also provides several options to customize how packet data is displayed:
+
+**-q → Quick output**
+
+**-A → Display packet data in ASCII**
+
+**-e → Show link-layer headers (including MAC addresses)**
+
+**The -e option was particularly interesting because it reveals MAC addresses.**
+
+Since IP addresses can be spoofed, checking MAC addresses can help identify the actual physical device causing unusual traffic within a network.
+
+### 🎓 Key Takeaways
+
+Tcpdump is a powerful CLI-based packet analysis tool widely used in cybersecurity and SOC environments.
+
+It helps visualize real network traffic instead of just learning protocols theoretically.
+
+Filtering by host, port, protocol, and TCP flags allows precise traffic investigation.
+
+PCAP file analysis is an essential skill for real-world security analysis.
+
+Understanding tcpdump significantly improves practical knowledge of how networks behave behind the scenes.
+
+Overall, this room strengthened my understanding of packet capture, traffic filtering, and real-world network analysis, which are essential skills for a future SOC analyst.
