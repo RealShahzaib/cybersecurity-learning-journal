@@ -145,6 +145,8 @@ I generated my own SSH key pair inside my Linux environment using:
 ```bash
 ssh-keygen
 ```
+[SSH Key Generation](images/ssh-keygen.png)
+
 
 ---
 **Key observations:**
@@ -185,6 +187,8 @@ Importing a key:
 ```gpg --import pkey.key```
 Decrypting an encrypted message:
 ```gpg --decrypt message.gpg```
+
+[GPG importing and decrypting](images/gpg-import-decrpyt.png)
 
 This showed me how encrypted files in CTFs can be decrypted using proper keys.
 
