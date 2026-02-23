@@ -9,7 +9,7 @@ This folder contains my writeups and learning notes from the Cyber 101 learning 
 - Wireshark Basics
 - Tcpdump Basisc
 - Nmap Basics
-  
+- Cryptgraphy
 
 ## 🎯 Goal
 Building strong foundational and defensive cybersecurity skills to pursue a SOC Analyst role.
