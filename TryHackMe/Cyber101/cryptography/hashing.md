@@ -194,6 +194,8 @@ In one of my practical tasks:
 - Used `hashcat` with `rockyou.txt` wordlist
 - Successfully cracked the passwords
 
+[Hashcat-password-cracking](https://github.com/RealShahzaib/cybersecurity-learning-journal/blob/main/TryHackMe/Cyber101/cryptography/images/hashcat-cracking.png)
+
 This helped me understand how weak passwords and poor hashing practices are exploited in real attacks.
 
 ---
